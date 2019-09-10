@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
-
 import requests
 import time
 import os
-
-USERNAME=''
-PASSWORD=''
+import json
 
 LOGIN_URL='https://www.eprimo.de/service/account/auth/login'
 INVOICES_LIST_URL='https://www.eprimo.de/service/contract/inbox'
 PDF_BASE_URL='https://www.eprimo.de'
 SESSION = requests.Session()
 
+def load_json(json_filename):
+	with open(json_filename) as json_file:
+		data = json.load(json_file)
+		return data
 
 def get_csrf():
 	res = SESSION.get(LOGIN_URL)
@@ -52,22 +53,18 @@ def get_invoice_list():
 		pdf_link = tds[4].split('<td>')[0].split('>')[1].split('href="')[1].split('"')[0]
 		print(subject)
 		print(pdf_link)
-		filename = date + ' ' + subject + '.pdf'
+		filename = os.path.join(config['folder'], date + ' ' + subject + '.pdf')
 		if (os.path.isfile(filename)) == False:
 			res = SESSION.get(PDF_BASE_URL + pdf_link)
 			open(filename, 'wb').write(res.content)
+			os.chown(filename, config['chown']['uid'], config['chown']['gid'])
+			print("Saved")
+		else:
+			print("No new file")
 
 
-
-def init():
-	global USERNAME
-	global PASSWORD
-	config = open('./login.txt', 'r')
-	USERNAME = config.readline().strip()
-	PASSWORD = config.readline().strip()
-
-init()
-print('user: ' + USERNAME)
-print('password: ' + PASSWORD)
-do_login(USERNAME, PASSWORD)
+config = load_json('config.json')
+print('user: ' + config['username'])
+print('password: ' + config['password'])
+do_login(config['username'], config['password'])
 get_invoice_list()
